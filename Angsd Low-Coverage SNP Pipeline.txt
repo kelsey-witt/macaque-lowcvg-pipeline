@@ -1,0 +1,124 @@
+#############################################################################################################
+#                                                                                                           #
+#  Pipeline used in "Population genetics of wild Macaca fascicularis with low-coverage shotgun sequencing   #
+#  of museum specimens" by Yao and Witt et al., 2020, American Journal of Physical Anthropology.            #
+#                                                                                                           #
+#  Developed by Kelsey Witt, using angsd and python scripts to process low-coverage genome data and         #
+#  perform population genetics analyses.                                                                    #
+#  Pipeline and all scripts available at https://github.com/kelsey-witt/macaque-lowcvg-pipeline             #
+#                                                                                                           #
+#  Contact with questions: kelsey_witt_dillon@brown.edu                                                     #
+#                                                                                                           #
+#############################################################################################################
+
+Examining Allele Counts and Coverage (to determine which individuals have sufficient coverage to be included in the analysis)
+NOTE: All python scripts used run on python 3.7.
+	1. Make a list of bam files for running angsd
+		ls *.bam > bam.filelist
+	2. Look at depth of coverage per individual and per site (-doCounts 1 -doDepth 1 -dumpCounts 2) with a minimum quality score of 30 (-minQ -30) and a minimum of 5 individuals per site (-minInd 5)
+		angsd -b bam.filelist -doCounts 1 -minQ 30 -minInd 5 -dumpCounts 2 -doDepth 1 -out outfile
+	The final output is 5 files:
+		1. A .arg file that lists the arguments you put in.
+		2. A .counts.gz file that lists the depth of each individual at each site
+		3. A .pos.gz file that lists the chromosome, position, and total depth for each site
+		4. A .depthGlobal file that lists how many reads have a given depth (a list of N numbers, N being the number of individuals, with each number
+			a count of reads with that depth
+		5. A .depthSample file that is the same as depthGlobal, but has a row for each individual and summarizes depth per sample
+	3. Use python script count_ind_coverage_per_pos.py to turn the .counts.gz file into an indDepth.txt file, which is similar to a depthGlobal file but instead of the depth, it measures the number
+		of individuals covered.
+			python count_ind_coverage_per_pos.py file.counts.gz (output: file_indDepth.txt)
+	4. Use excel or R to plot distribution of indDepth file.txt, which gives you the number of positions with each depth count - good way to visualize overall coverage
+	5. Use python script print_individual_coverage.py, which reads in a counts.gz file and outputs a csv file with the following columns: individual, positions covered, % covered, total depth.
+		The % is calculated by dividing the sites covered by the individual by the total in the sites file, and the individuals must be edited in the python script to make sure the individual names 
+		are correctly identified.
+		python print_individual_coverage.py (input: file.counts.gz; output: file.indbreakdown.csv)
+	5. Use indbreakdown.csv file to see the number of positions covered, the percent coverage of the whole dataset, and the total number of reads per individual
+		Note: the sample ID is just numerical order based on the bam file you provided. Be sure to convert to actual sample names
+	6. If all samples have appropriate coverage and depth, proceed to next step. Otherwise, select a subset of individuals based on a cutoff (min percent, min depth, etc.) and
+		rerun steps 1-4 until your dataset is satisfactory. There is a tradeoff between number of individuals and global depth/percent coverage.
+	My steps: I filtered the macaques down to all that had at least 1 million reads represented (N=94), and reran the analysis. This still included multiple individuals with low
+	coverage, so I filtered the list further to individuals with 1% of the SNPs with at least 5x global depth (N=75), as well as 5% (N=37), and compared them. The 1% list had sufficient
+	diversity, while the 5% list had too few individuals, so I chose to go with the 1% list (min5_1mil_1p)
+Calculating genotype likelihoods (calculates likelihoods rather than frequencies to make up for lower coverage)
+	Generate genotype likelihoods using samtools method (-GL 1) and output files in Beagle format (-doGlf 2), while also identifying the major and minor allele (doMajorMinor 1) with a SNP p-value of .01 
+	(SNP_pval 1e-2) and at least 50% individuals represented (-minInd 37)
+		angsd -GL 1 -out outfile -nThreads 10 -doGlf 2 -doMajorMinor 1 -doMaf 2 -SNP_pval 1e-2 -minInd X -b bam.filelist -ref reference.fasta
+	The final output is 3 files:
+		1. A .arg file that lists the arguments you put in.
+		2. A .beagle.gz file that outputs genotype likelihoods per site in beagle format
+		3. A .mafs.gz file that is tab-separated with the following columns: chromosome, position, major allele, minor allele, reference allele, allele frequency, SNP p-value, number of individuals
+			represented
+Make PCA and Admixture plots
+	1. Make subsets of the data such that each 50 kb window only contains 1 SNP (selecting for SNPs with a higher minor allele frequency and more individuals represented. The first script prints the list of
+	positions selected to a text file, while the second actually filters the Beagle file to include only those positions. All infile and outfile names are in the scripts themselves, and must be re-numbered
+	so you aren't overwriting the window files
+		python angsd_snp_windows_selection.py
+		python filter_angsd_beagle_snps.py
+	The final output will be a smaller beagle file with one SNP per window, randomly selected.
+	2. Run PCAngsd on all positions, plus a few subset files to compare results. This generates the PCA data as well as the admixture data. The command as written will output the most likely number of clusters,
+	but if you wish to run a specific number of clusters to compare them, you can use the command -admix_K N to force admixture to use N clusters. If you run multiple of these, you'll get multiple PCA results
+	but they will all be identical.
+		python pcangsd.py -beagle file.beagle.gz -n 75 -admix -o outfile -threads 4
+Calculating FST per population
+	1. Calculate per population site frequency spectra
+		~/programs/angsd/angsd -b pop1_bams.txt  -anc reference.fasta -out pop1 -minQ 30 -dosaf 1 -gl 1 
+		~/programs/angsd/angsd -b pop2_bams.txt  -anc reference.fasta -out pop2 -minQ 30 -dosaf 1 -gl 1 
+	2. Make sites file to limit the SNPs analyzed to the high coverage ones
+		I filtered the .pos.gz file generated from the allele coverage analysis to include only the positions with a minimum
+		depth of 37.
+			python make_angsd_sites_file.py
+		Edit the file as needed to change depth cutoff or input or output names
+		Index using angsd
+			angsd sites index sitesfile.txt
+	3. Do pairwise comparisons of SFSs
+		~/programs/angsd/misc/realSFS -sites sitesfile.txt pop1.saf.idx pop2.saf.idx -P 4 > pop12.ml
+	4. Calculate FST
+		~/programs/angsd/misc/realSFS fst index pop1.saf.idx pop2.saf.idx -sfs pop12.ml -fstout pop12_fst
+		~/programs/angsd/misc/realSFS fst stats pop12_fst.fst.idx
+		
+Calculating Heterozygosity Per Individual
+	1. Start with site frequency spectra per individual (same as above, just specify one individual rather than all within a population)
+	2. Estimate SFS for a single sample
+		~/programs/angsd/misc/realSFS pop1_ind1.saf.idx >pop1_1.ml
+	3. Use R code to extract heterozygosity
+	
+Building a Neighbor Joining Tree
+	1. Generate SNP set for analysis:
+		angsd bam.filelist -doMajorMinor 4 -doMaf 2 -GL 1 -ref reference.fasta -out outfile -sites sitesfile.txt
+		angsd bam.filelist -doCounts 1 -dumpCounts 4 -ref reference.fasta -out outfile -sites sitesfile.txt
+		
+	2. Construct a pseudoautosomal SNP vcf file	
+		Pulls 1 read for each position for each individual (helps control for the fact that some individuals have more coverage than others)
+		python dump_counts_to_vcf_multi.py makes multiple of these randomized pseudoautosomal files
+			2 input files required: a .mafs.gz file and a .counts.gz file - you can change the file names in the python script.
+			Output is macaque_pseudoautosomal_snps_X.vcf
+	3. Use TASSEL to construct neighbor joining trees for each dataset
+		for i in ../pseudoautosomal_replicates/*99_outgrp.vcf;
+		do outfile=${i:30:${#a}-4}outgroup.txt;
+		echo $outfile;
+		done
+		~/programs/tassel-5-standalone/run_pipeline.pl -vcf $i -tree Neighbor -treeSaveDistance false -export $outfile -exportType Text;
+		done
+	4. Repeat 1000x
+	5. Use consense in Phylip to generate consensus tree
+		Make file of trees, one line per tree, Newick format
+		Move to phylip/exe folder
+		Click on consense program to run
+		Set any options
+		Out file will be called outtree
+Building a maximim likelihood tree
+	1. Use above pseudoautosomal snp vcf file (100x)
+	2. Convert to phylip using Fasta2Phylip.pl x.fasta x.phy
+		Accessible at https://indra.mullins.microbiol.washington.edu/cgi-bin/perlscript/info.cgi?ID=Fasta2Phylip.pl&path=perlscript-scripts
+	3. Run raxml on 100 replicates
+		for i in *.phy; do j=${i:0: -4}"_tree" ; ~/programs/standard-RAxML-8.2.12/raxmlHPC-PTHREADS-SSE3 -T12 -f a -x 11355 -N 1000 -p 24311 \
+		-m ASC_GTRCAT --asc-corr=lewis -s $i -n $j; done
+	4. Add outgroup SNPs
+		Run python script (add_macaque_outgroup.py) to pull the reference alleles from the vcf file and append to the phylip file as an outgroup.
+	5. Add outgroup onto trees
+		for i in *run9*outgroup.phy; do j="RAxML_bestTree."${i:0: -13}"_tree" ; 
+		k=${i:0:-4}"_og_tree";~/programs/standard-RAxML-8.2.12/raxmlHPC-PTHREADS-SSE3 -T12 -f v -s $i -t $j -m GTRCAT -n $k; done
+	6. Remove brackets from output trees to make them readable in tree consensus software
+			for i in *_labelledTree*og_tree;do j=${i}"NoBracket";sed -e 's/\[[^][]*\]//g' $i > $j; done
+	7. Generate consensus tree using consense (see above)
+		Can set outgroup using "O" option - select outgroup number based on position in first Newick tree (ie if it's the third taxa, outgroup = #3)
