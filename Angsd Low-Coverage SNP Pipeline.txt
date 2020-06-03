@@ -25,8 +25,8 @@ NOTE: All python scripts used run on python 3.7.
 			a count of reads with that depth
 		5. A .depthSample file that is the same as depthGlobal, but has a row for each individual and summarizes depth per sample
 	3. Use python script count_ind_coverage_per_pos.py to turn the .counts.gz file into an indDepth.txt file, which is similar to a depthGlobal file but instead of the depth, it measures the number
-		of individuals covered.
-			python count_ind_coverage_per_pos.py file.counts.gz (output: file_indDepth.txt)
+		of individuals covered. The 'N' in the python command is your sample size.
+			python count_ind_coverage_per_pos.py file.counts.gz N(output: file_indDepth.txt)
 	4. Use excel or R to plot distribution of indDepth file.txt, which gives you the number of positions with each depth count - good way to visualize overall coverage
 	5. Use python script print_individual_coverage.py, which reads in a counts.gz file and outputs a csv file with the following columns: individual, positions covered, % covered, total depth.
 		The % is calculated by dividing the sites covered by the individual by the total in the sites file, and the individuals must be edited in the python script to make sure the individual names 
