@@ -1,8 +1,8 @@
 """
 This script was written by Kelsey Witt in March 2018. This file takes an angsd .mafs file
-(generated using the command angsd -doMajorMinor 1 -doMaf 2) and outputs a text file containing
-a randomized set of unlinked SNPs, where each window (default size 50 kB, but can be changed)
-contains only one SNP. This file can then be used as the input file for "filter_angsd_beagle_snps.py".
+(generated using the command angsd -doMajorMinor 1 -doMaf 2 and including the -ref flag) and outputs 
+a text file containing a randomized set of unlinked SNPs, where each window (default size 50 kB, but can 
+be changed) contains only one SNP. This file can then be used as the input file for "filter_angsd_beagle_snps.py".
 
 Usage: python3 angsd_snp_windows_selection.py
 
