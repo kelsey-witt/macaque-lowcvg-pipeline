@@ -7,7 +7,7 @@ The full workflow is outlined in "Angsd Low-Coverage SNP Pipeline.txt", and all 
 Required software:
 * Python3 
 * ANGSD
-* pcangsd (PCA/Admixture plots)
+* pcangsd v. 0.9 (PCA/Admixture plots)
 * RAxML (maximum likelihood trees)
 * TASSEL (neighbor joining trees)
 
