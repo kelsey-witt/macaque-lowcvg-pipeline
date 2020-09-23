@@ -65,9 +65,9 @@ Make PCA and Admixture plots
 		python angsd_snp_windows_selection.py
 		python filter_angsd_beagle_snps.py
 	The final output will be a smaller beagle file with one SNP per window, randomly selected.
-	2. Run PCAngsd on all positions, plus a few subset files to compare results. This generates the PCA data as well as the admixture data. The command as written 
-	will output the most likely number of clusters, but if you wish to run a specific number of clusters to compare them, you can use the command -admix_K N to 
-	force admixture to use N clusters. If you run multiple of these, you'll get multiple PCA results but they will all be identical.
+	2. Run PCAngsd (version 0.9) on all positions, plus a few subset files to compare results. This generates the PCA data as well as the admixture data. The 
+	command as written will output the most likely number of clusters, but if you wish to run a specific number of clusters to compare them, you can use the 
+	command -admix_K N to force admixture to use N clusters. If you run multiple of these, you'll get multiple PCA results but they will all be identical.
 		python pcangsd.py -beagle file.beagle.gz -admix -o outfile -threads 4
 Calculating FST per population (recommended for populations for >=5 individuals)
 	1. Calculate per population site frequency spectra
