@@ -14,6 +14,7 @@ Required software:
 Please see the [angsd documentation](http://www.popgen.dk/angsd/index.php/ANGSD#Overview) for a thorough explanation of angsd and its options!
 
 The scripts referenced here were used to analyze data that is presented in the following [manuscript](https://onlinelibrary.wiley.com/doi/abs/10.1002/ajpa.24099):
+
 Lu Yao, Kelsey Witt, Hongjie Li, Jonathan Rice, Nelson R. Salinas, Robert D. Martin, Emilia Huerta-Sanchez, and Ripan S. Malhi. **Population genetics of wild Macaca fascicularis with low-coverage shotgun sequencing of museum specimens.** American Journal of Physical Anthropology 173(1): 21-33.
 
 
